@@ -5,14 +5,14 @@ use warnings;
 use Carp ();
 use Plack;
 use Plack::HTTPParser qw( parse_http_request );
-use IO::Socket::INET;
+use IO::Socket::INET6;
 use HTTP::Date;
 use HTTP::Status;
 use List::Util qw(max sum);
 use Plack::Util;
 use Plack::TempBuffer;
 use POSIX qw(EINTR EAGAIN EWOULDBLOCK);
-use Socket qw(IPPROTO_TCP TCP_NODELAY);
+use Socket qw(IPPROTO_TCP TCP_NODELAY inet_pton);
 use File::Temp qw(tempfile);
 use Fcntl qw(:flock);
 
@@ -73,7 +73,7 @@ sub setup_listener {
     my $self = shift;
     if (scalar(grep {defined $_} @{$self->{listens}}) == 0) {
         my $sock =
-            IO::Socket::INET->new(
+            IO::Socket::INET6->new(
                 Listen    => SOMAXCONN,
                 LocalPort => $self->{port},
                 LocalAddr => $self->{host},
@@ -141,8 +141,8 @@ sub accept_loop {
         if ($listen->{_is_tcp}) {
             $conn->setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
                 or die "setsockopt(TCP_NODELAY) failed:$!";
-            ($peerport, $peerhost) = unpack_sockaddr_in $peer;
-            $peeraddr = inet_ntoa($peerhost);
+            ($peerport, $peerhost) = unpack_sockaddr_in6 $peer;
+            $peeraddr = inet_pton(AF_INET6, $peerhost);
         }
         my $req_count = 0;
         my $pipelined_buf = '';
